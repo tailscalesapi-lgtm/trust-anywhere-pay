@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { Layout, Panel, YellowCard } from "@/components/Layout";
 import { createTrade, listAssets } from "@/lib/trades.functions";
+import { getPrices } from "@/lib/prices.functions";
+
 
 export const Route = createFileRoute("/new-trade")({
   head: () => ({
@@ -18,11 +20,14 @@ function NewTrade() {
   const navigate = useNavigate();
   const create = useServerFn(createTrade);
   const fetchAssets = useServerFn(listAssets);
+  const fetchPrices = useServerFn(getPrices);
   const [assets, setAssets] = useState<Array<{ symbol: string; name: string }>>([]);
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
   const [coin, setCoin] = useState("BTC");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  const [usdAmount, setUsdAmount] = useState("");
   const [agreement, setAgreement] = useState("");
   const [hours, setHours] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +39,26 @@ function NewTrade() {
       setAssets(a);
       if (a.length && !a.find((x) => x.symbol === coin)) setCoin(a[0].symbol);
     }).catch(() => {});
+    const load = () => fetchPrices().then(setPrices).catch(() => {});
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
   }, []);
+
+  const price = prices[coin];
+  const usdValue = price && amount ? Number(amount) * price : null;
+
+  const onCryptoChange = (v: string) => {
+    setAmount(v);
+    if (price && v) setUsdAmount((Number(v) * price).toFixed(2));
+    else setUsdAmount("");
+  };
+  const onUsdChange = (v: string) => {
+    setUsdAmount(v);
+    if (price && v) setAmount((Number(v) / price).toFixed(8));
+    else setAmount("");
+  };
+
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +143,11 @@ function NewTrade() {
                 </option>
               ))}
             </select>
+            {price && (
+              <p className="text-sm mt-1 text-muted-foreground">
+                Live price: <strong>1 {coin} ≈ ${price.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD</strong>
+              </p>
+            )}
           </Labeled>
 
           <Labeled label="Trade Name:">
@@ -133,18 +162,38 @@ function NewTrade() {
             />
           </Labeled>
 
-          <Labeled label={`Trade Amount (${coin}):`}>
-            <input
-              type="number"
-              step="0.00000001"
-              min="0"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter transaction amount"
-              className="w-full bg-card text-card-foreground rounded px-3 py-2 placeholder:text-card-foreground/60"
-            />
-          </Labeled>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Labeled label={`Amount (${coin}):`}>
+              <input
+                type="number"
+                step="0.00000001"
+                min="0"
+                required
+                value={amount}
+                onChange={(e) => onCryptoChange(e.target.value)}
+                placeholder={`Amount in ${coin}`}
+                className="w-full bg-card text-card-foreground rounded px-3 py-2 placeholder:text-card-foreground/60"
+              />
+            </Labeled>
+            <Labeled label="≈ Amount (USD):">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={usdAmount}
+                onChange={(e) => onUsdChange(e.target.value)}
+                disabled={!price}
+                placeholder={price ? "USD equivalent" : "Loading price…"}
+                className="w-full bg-card text-card-foreground rounded px-3 py-2 placeholder:text-card-foreground/60 disabled:opacity-60"
+              />
+            </Labeled>
+          </div>
+          {usdValue !== null && (
+            <p className="text-sm text-muted-foreground -mt-2">
+              {amount} {coin} ≈ ${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD
+            </p>
+          )}
+
 
           <Labeled label="Trade Agreement:">
             <textarea
