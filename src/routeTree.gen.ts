@@ -13,6 +13,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as NewTradeRouteImport } from './routes/new-trade'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as CheckTradeRouteImport } from './routes/check-trade'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TradeIdRouteImport } from './routes/trade.$id'
 
@@ -36,6 +37,11 @@ const CheckTradeRoute = CheckTradeRouteImport.update({
   path: '/check-trade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,6 +55,7 @@ const TradeIdRoute = TradeIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/check-trade': typeof CheckTradeRoute
   '/faq': typeof FaqRoute
   '/new-trade': typeof NewTradeRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/check-trade': typeof CheckTradeRoute
   '/faq': typeof FaqRoute
   '/new-trade': typeof NewTradeRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/check-trade': typeof CheckTradeRoute
   '/faq': typeof FaqRoute
   '/new-trade': typeof NewTradeRoute
@@ -76,16 +85,25 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/check-trade'
     | '/faq'
     | '/new-trade'
     | '/terms'
     | '/trade/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/check-trade' | '/faq' | '/new-trade' | '/terms' | '/trade/$id'
+  to:
+    | '/'
+    | '/admin'
+    | '/check-trade'
+    | '/faq'
+    | '/new-trade'
+    | '/terms'
+    | '/trade/$id'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/check-trade'
     | '/faq'
     | '/new-trade'
@@ -95,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   CheckTradeRoute: typeof CheckTradeRoute
   FaqRoute: typeof FaqRoute
   NewTradeRoute: typeof NewTradeRoute
@@ -132,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckTradeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -151,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   CheckTradeRoute: CheckTradeRoute,
   FaqRoute: FaqRoute,
   NewTradeRoute: NewTradeRoute,
