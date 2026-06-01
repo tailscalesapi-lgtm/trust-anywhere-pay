@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { Layout, Panel, YellowCard } from "@/components/Layout";
 import { createTrade, listAssets } from "@/lib/trades.functions";
+import { getPrices } from "@/lib/prices.functions";
+
 
 export const Route = createFileRoute("/new-trade")({
   head: () => ({
@@ -18,11 +20,14 @@ function NewTrade() {
   const navigate = useNavigate();
   const create = useServerFn(createTrade);
   const fetchAssets = useServerFn(listAssets);
+  const fetchPrices = useServerFn(getPrices);
   const [assets, setAssets] = useState<Array<{ symbol: string; name: string }>>([]);
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
   const [coin, setCoin] = useState("BTC");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  const [usdAmount, setUsdAmount] = useState("");
   const [agreement, setAgreement] = useState("");
   const [hours, setHours] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +39,26 @@ function NewTrade() {
       setAssets(a);
       if (a.length && !a.find((x) => x.symbol === coin)) setCoin(a[0].symbol);
     }).catch(() => {});
+    const load = () => fetchPrices().then(setPrices).catch(() => {});
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
   }, []);
+
+  const price = prices[coin];
+  const usdValue = price && amount ? Number(amount) * price : null;
+
+  const onCryptoChange = (v: string) => {
+    setAmount(v);
+    if (price && v) setUsdAmount((Number(v) * price).toFixed(2));
+    else setUsdAmount("");
+  };
+  const onUsdChange = (v: string) => {
+    setUsdAmount(v);
+    if (price && v) setAmount((Number(v) / price).toFixed(8));
+    else setAmount("");
+  };
+
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
