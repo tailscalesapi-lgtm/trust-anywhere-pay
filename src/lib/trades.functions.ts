@@ -61,6 +61,58 @@ async function autoFinalize(t: any) {
   return t;
 }
 
+// Query mempool.space for total sats received at the address (confirmed + mempool).
+async function fetchAddressReceivedSats(address: string): Promise<{ received: number; confirmedReceived: number } | null> {
+  try {
+    const res = await fetch(`https://mempool.space/api/address/${address}`, {
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const j: any = await res.json();
+    const confirmed = Number(j?.chain_stats?.funded_txo_sum ?? 0);
+    const mempool = Number(j?.mempool_stats?.funded_txo_sum ?? 0);
+    return { received: confirmed + mempool, confirmedReceived: confirmed };
+  } catch {
+    return null;
+  }
+}
+
+// On-chain check: if the deposit address has received >= the trade amount, mark funded.
+// Returns the (possibly updated) trade row.
+async function autoDetectDeposit(t: any) {
+  if (t.status !== "pending_deposit") return t;
+  const requiredSats = Math.round(Number(t.amount) * 1e8);
+  const stats = await fetchAddressReceivedSats(t.deposit_address);
+  if (!stats) return t;
+  // Require confirmed funds to lock the escrow (avoid 0-conf false positives).
+  if (stats.confirmedReceived >= requiredSats) {
+    const now = new Date();
+    const deadline = new Date(now.getTime() + t.finalization_hours * 3600_000);
+    const { data } = await supabaseAdmin
+      .from("trades")
+      .update({
+        status: "funded",
+        funded_at: now.toISOString(),
+        finalization_deadline: deadline.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq("id", t.id)
+      .eq("status", "pending_deposit")
+      .select()
+      .single();
+    return data ?? t;
+  }
+  // Attach transient on-chain info so the client can show progress.
+  return {
+    ...t,
+    _onchain: {
+      received_sats: stats.received,
+      confirmed_sats: stats.confirmedReceived,
+      required_sats: requiredSats,
+    },
+  };
+}
+
 export const createTrade = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
