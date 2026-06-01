@@ -119,7 +119,7 @@ function TradeView({
   reload: () => void;
 }) {
   const { trade, dispute, messages } = data;
-  const fund = useServerFn(markFunded);
+  // markFunded is no longer used directly — funding is detected on-chain by getTrade.
   const release = useServerFn(releaseFunds);
   const cancel = useServerFn(cancelTrade);
   const dispute_ = useServerFn(openDispute);
