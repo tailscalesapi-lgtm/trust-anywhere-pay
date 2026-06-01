@@ -170,7 +170,7 @@ function TradeView({
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Info label="Amount" value={`${trade.amount} BTC`} />
+          <Info label="Amount" value={`${trade.amount} ${trade.payment_method}`} />
           <Info label="Payment" value={trade.payment_method} />
           <Info label="Creator role" value={trade.creator_role} />
           <Info label="Finalization" value={`${trade.finalization_hours} h`} />
