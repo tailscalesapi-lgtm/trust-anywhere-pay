@@ -3,14 +3,6 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-// Demo BTC deposit addresses — in production these would come from a real wallet/HD derivation.
-const DEMO_BTC_ADDRESSES = [
-  "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-  "bc1q9h0yjdupyfpxfjg24rpx755xrplvzd9hz2nj7v",
-  "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  "bc1qa5wkgaew2dkv56kfvj49j0av5nml45x9ek9hz6",
-];
-
 function slug(len = 10) {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789";
   let s = "";
@@ -47,9 +39,12 @@ function publicTrade(t: any) {
   return rest;
 }
 
-// Auto-finalize: if deadline passed and still funded, mark completed.
 async function autoFinalize(t: any) {
-  if (t.status === "funded" && t.finalization_deadline && new Date(t.finalization_deadline) <= new Date()) {
+  if (
+    t.status === "funded" &&
+    t.finalization_deadline &&
+    new Date(t.finalization_deadline) <= new Date()
+  ) {
     const { data } = await supabaseAdmin
       .from("trades")
       .update({ status: "completed", updated_at: new Date().toISOString() })
@@ -61,8 +56,9 @@ async function autoFinalize(t: any) {
   return t;
 }
 
-// Query mempool.space for total sats received at the address (confirmed + mempool).
-async function fetchAddressReceivedSats(address: string): Promise<{ received: number; confirmedReceived: number } | null> {
+async function fetchAddressReceivedSats(
+  address: string,
+): Promise<{ received: number; confirmedReceived: number } | null> {
   try {
     const res = await fetch(`https://mempool.space/api/address/${address}`, {
       headers: { accept: "application/json" },
@@ -77,14 +73,13 @@ async function fetchAddressReceivedSats(address: string): Promise<{ received: nu
   }
 }
 
-// On-chain check: if the deposit address has received >= the trade amount, mark funded.
-// Returns the (possibly updated) trade row.
+// On-chain auto-detect (BTC only). Other assets advance via manual confirm.
 async function autoDetectDeposit(t: any) {
   if (t.status !== "pending_deposit") return t;
+  if (t.payment_method !== "BTC") return t;
   const requiredSats = Math.round(Number(t.amount) * 1e8);
   const stats = await fetchAddressReceivedSats(t.deposit_address);
   if (!stats) return t;
-  // Require confirmed funds to lock the escrow (avoid 0-conf false positives).
   if (stats.confirmedReceived >= requiredSats) {
     const now = new Date();
     const deadline = new Date(now.getTime() + t.finalization_hours * 3600_000);
@@ -102,7 +97,6 @@ async function autoDetectDeposit(t: any) {
       .single();
     return data ?? t;
   }
-  // Attach transient on-chain info so the client can show progress.
   return {
     ...t,
     _onchain: {
@@ -113,12 +107,23 @@ async function autoDetectDeposit(t: any) {
   };
 }
 
+// Public list of enabled assets (for new-trade form, etc.)
+export const listAssets = createServerFn({ method: "GET" }).handler(async () => {
+  const { data } = await supabaseAdmin
+    .from("crypto_assets")
+    .select("symbol,name,network,decimals,min_amount,max_amount,explorer_addr_url,explorer_tx_url")
+    .eq("enabled", true)
+    .order("sort_order")
+    .order("symbol");
+  return data ?? [];
+});
+
 export const createTrade = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
       .object({
         role: z.enum(["buyer", "seller"]),
-        payment_method: z.literal("BTC"),
+        payment_method: z.string().trim().min(2).max(12),
         name: z.string().trim().min(1).max(200),
         amount: z.number().positive().max(1_000_000),
         agreement: z.string().trim().min(10).max(5000),
@@ -127,32 +132,60 @@ export const createTrade = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    const symbol = data.payment_method.toUpperCase();
+    const { data: asset } = await supabaseAdmin
+      .from("crypto_assets")
+      .select("id,enabled,min_amount,max_amount")
+      .eq("symbol", symbol)
+      .maybeSingle();
+    if (!asset || !asset.enabled) throw new Error("Unsupported payment method");
+    if (data.amount < Number(asset.min_amount))
+      throw new Error(`Minimum is ${asset.min_amount} ${symbol}`);
+    if (asset.max_amount && data.amount > Number(asset.max_amount))
+      throw new Error(`Maximum is ${asset.max_amount} ${symbol}`);
+
+    const { data: addrs } = await supabaseAdmin
+      .from("crypto_deposit_addresses")
+      .select("id,address,use_count")
+      .eq("asset_id", asset.id)
+      .eq("enabled", true)
+      .order("use_count", { ascending: true })
+      .limit(10);
+    if (!addrs || addrs.length === 0)
+      throw new Error("No deposit address available — please contact support.");
+    const picked = addrs[Math.floor(Math.random() * addrs.length)];
+
     const id = slug(10);
     const pw = password(16);
     const password_hash = await bcrypt.hash(pw, 10);
-    const deposit_address = DEMO_BTC_ADDRESSES[Math.floor(Math.random() * DEMO_BTC_ADDRESSES.length)];
+
     const { error } = await supabaseAdmin.from("trades").insert({
       id,
       password_hash,
       creator_role: data.role,
-      payment_method: "BTC",
+      payment_method: symbol,
       name: data.name,
       amount: data.amount,
       agreement: data.agreement,
       finalization_hours: data.finalization_hours,
-      deposit_address,
+      deposit_address: picked.address,
     });
     if (error) throw new Error(error.message);
+    await supabaseAdmin
+      .from("crypto_deposit_addresses")
+      .update({ use_count: (picked.use_count ?? 0) + 1 })
+      .eq("id", picked.id);
     return { id, password: pw };
   });
 
 export const getTrade = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ id: z.string().min(1), password: z.string().min(1) }).parse(d))
+  .inputValidator((d) =>
+    z.object({ id: z.string().min(1), password: z.string().min(1) }).parse(d),
+  )
   .handler(async ({ data }) => {
     let t = await loadAndAuth(data.id, data.password);
     t = await autoFinalize(t);
     t = await autoDetectDeposit(t);
-    // Load dispute if any
     const { data: dispute } = await supabaseAdmin
       .from("disputes")
       .select("*")
@@ -177,6 +210,8 @@ export const markFunded = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const t = await loadAndAuth(data.id, data.password);
     if (t.status !== "pending_deposit") throw new Error("Trade is not awaiting deposit");
+    if (t.payment_method === "BTC")
+      throw new Error("BTC trades unlock automatically once confirmed on-chain.");
     const now = new Date();
     const deadline = new Date(now.getTime() + t.finalization_hours * 3600_000);
     const { error } = await supabaseAdmin
@@ -220,7 +255,9 @@ export const cancelTrade = createServerFn({ method: "POST" })
 
 export const openDispute = createServerFn({ method: "POST" })
   .inputValidator((d) =>
-    z.object({ id: z.string(), password: z.string(), reason: z.string().trim().min(5).max(2000) }).parse(d),
+    z
+      .object({ id: z.string(), password: z.string(), reason: z.string().trim().min(5).max(2000) })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const t = await loadAndAuth(data.id, data.password);
