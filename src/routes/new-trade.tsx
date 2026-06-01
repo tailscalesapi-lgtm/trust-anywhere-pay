@@ -108,11 +108,16 @@ function NewTrade() {
 
           <Labeled label="Payment Method:">
             <select
-              value="BTC"
-              disabled
+              value={coin}
+              onChange={(e) => setCoin(e.target.value)}
               className="bg-card text-card-foreground rounded px-3 py-2"
             >
-              <option>BTC</option>
+              {assets.length === 0 && <option value="BTC">BTC</option>}
+              {assets.map((a) => (
+                <option key={a.symbol} value={a.symbol}>
+                  {a.symbol} — {a.name}
+                </option>
+              ))}
             </select>
           </Labeled>
 
@@ -128,7 +133,7 @@ function NewTrade() {
             />
           </Labeled>
 
-          <Labeled label="Trade Amount (BTC):">
+          <Labeled label={`Trade Amount (${coin}):`}>
             <input
               type="number"
               step="0.00000001"
