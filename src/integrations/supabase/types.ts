@@ -14,7 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dispute_messages: {
+        Row: {
+          content: string
+          created_at: string
+          dispute_id: string
+          id: string
+          sender: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          dispute_id: string
+          id?: string
+          sender: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          dispute_id?: string
+          id?: string
+          sender?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_messages_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          created_at: string
+          id: string
+          resolution: string | null
+          resolved_at: string | null
+          status: string
+          trade_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+          trade_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+          trade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trades: {
+        Row: {
+          agreement: string
+          amount: number
+          created_at: string
+          creator_role: string
+          deposit_address: string
+          finalization_deadline: string | null
+          finalization_hours: number
+          funded_at: string | null
+          id: string
+          name: string
+          password_hash: string
+          payment_method: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreement: string
+          amount: number
+          created_at?: string
+          creator_role: string
+          deposit_address: string
+          finalization_deadline?: string | null
+          finalization_hours: number
+          funded_at?: string | null
+          id: string
+          name: string
+          password_hash: string
+          payment_method?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreement?: string
+          amount?: number
+          created_at?: string
+          creator_role?: string
+          deposit_address?: string
+          finalization_deadline?: string | null
+          finalization_hours?: number
+          funded_at?: string | null
+          id?: string
+          name?: string
+          password_hash?: string
+          payment_method?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
