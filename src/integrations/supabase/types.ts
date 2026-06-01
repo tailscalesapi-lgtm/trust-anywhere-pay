@@ -14,6 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip: string | null
+          payload: Json | null
+          target: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          payload?: Json | null
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          payload?: Json | null
+          target?: string | null
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      crypto_assets: {
+        Row: {
+          created_at: string
+          decimals: number
+          enabled: boolean
+          explorer_addr_url: string | null
+          explorer_tx_url: string | null
+          id: string
+          max_amount: number | null
+          min_amount: number
+          name: string
+          network: string
+          sort_order: number
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decimals?: number
+          enabled?: boolean
+          explorer_addr_url?: string | null
+          explorer_tx_url?: string | null
+          id?: string
+          max_amount?: number | null
+          min_amount?: number
+          name: string
+          network?: string
+          sort_order?: number
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decimals?: number
+          enabled?: boolean
+          explorer_addr_url?: string | null
+          explorer_tx_url?: string | null
+          id?: string
+          max_amount?: number | null
+          min_amount?: number
+          name?: string
+          network?: string
+          sort_order?: number
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crypto_deposit_addresses: {
+        Row: {
+          address: string
+          asset_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          label: string | null
+          use_count: number
+        }
+        Insert: {
+          address: string
+          asset_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          use_count?: number
+        }
+        Update: {
+          address?: string
+          asset_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crypto_deposit_addresses_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "crypto_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispute_messages: {
         Row: {
           content: string
