@@ -11,6 +11,8 @@ import {
   openDispute,
   releaseFunds,
 } from "@/lib/trades.functions";
+import { getPrices } from "@/lib/prices.functions";
+
 
 export const Route = createFileRoute("/trade/$id")({
   validateSearch: (s) => z.object({ pw: z.string().optional() }).parse(s),
@@ -125,11 +127,24 @@ function TradeView({
   const fund = useServerFn(markFunded);
   const dispute_ = useServerFn(openDispute);
   const sendMsg = useServerFn(addDisputeMessage);
+  const fetchPrices = useServerFn(getPrices);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [msg, setMsg] = useState("");
   const [sender, setSender] = useState<"buyer" | "seller">(trade.creator_role);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const load = () => fetchPrices().then(setPrices).catch(() => {});
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const price = prices[trade.payment_method];
+  const usdValue = price ? Number(trade.amount) * price : null;
+
 
   const run = async (fn: () => Promise<any>) => {
     setBusy(true);
@@ -171,13 +186,21 @@ function TradeView({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Info label="Amount" value={`${trade.amount} ${trade.payment_method}`} />
-          <Info label="Payment" value={trade.payment_method} />
+          <Info
+            label="≈ USD value"
+            value={usdValue !== null ? `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+          />
+          <Info
+            label="Live price"
+            value={price ? `1 ${trade.payment_method} ≈ $${price.toLocaleString(undefined, { maximumFractionDigits: 6 })}` : "—"}
+          />
           <Info label="Creator role" value={trade.creator_role} />
           <Info label="Finalization" value={`${trade.finalization_hours} h`} />
           {trade.finalization_deadline && (
             <Info label="Deadline" value={new Date(trade.finalization_deadline).toLocaleString()} />
           )}
         </div>
+
 
         <YellowCard>
           <p className="font-semibold mb-1">Trade Agreement</p>
