@@ -7,7 +7,7 @@ import {
   addDisputeMessage,
   cancelTrade,
   getTrade,
-  cancelTrade,
+  markFunded as _markFunded,
   openDispute,
   releaseFunds,
 } from "@/lib/trades.functions";
