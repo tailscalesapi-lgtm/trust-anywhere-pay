@@ -143,6 +143,11 @@ function NewTrade() {
                 </option>
               ))}
             </select>
+            {price && (
+              <p className="text-sm mt-1 text-muted-foreground">
+                Live price: <strong>1 {coin} ≈ ${price.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD</strong>
+              </p>
+            )}
           </Labeled>
 
           <Labeled label="Trade Name:">
@@ -157,18 +162,38 @@ function NewTrade() {
             />
           </Labeled>
 
-          <Labeled label={`Trade Amount (${coin}):`}>
-            <input
-              type="number"
-              step="0.00000001"
-              min="0"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter transaction amount"
-              className="w-full bg-card text-card-foreground rounded px-3 py-2 placeholder:text-card-foreground/60"
-            />
-          </Labeled>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Labeled label={`Amount (${coin}):`}>
+              <input
+                type="number"
+                step="0.00000001"
+                min="0"
+                required
+                value={amount}
+                onChange={(e) => onCryptoChange(e.target.value)}
+                placeholder={`Amount in ${coin}`}
+                className="w-full bg-card text-card-foreground rounded px-3 py-2 placeholder:text-card-foreground/60"
+              />
+            </Labeled>
+            <Labeled label="≈ Amount (USD):">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={usdAmount}
+                onChange={(e) => onUsdChange(e.target.value)}
+                disabled={!price}
+                placeholder={price ? "USD equivalent" : "Loading price…"}
+                className="w-full bg-card text-card-foreground rounded px-3 py-2 placeholder:text-card-foreground/60 disabled:opacity-60"
+              />
+            </Labeled>
+          </div>
+          {usdValue !== null && (
+            <p className="text-sm text-muted-foreground -mt-2">
+              {amount} {coin} ≈ ${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD
+            </p>
+          )}
+
 
           <Labeled label="Trade Agreement:">
             <textarea
