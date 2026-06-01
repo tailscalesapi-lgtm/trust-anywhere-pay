@@ -151,6 +151,7 @@ export const getTrade = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     let t = await loadAndAuth(data.id, data.password);
     t = await autoFinalize(t);
+    t = await autoDetectDeposit(t);
     // Load dispute if any
     const { data: dispute } = await supabaseAdmin
       .from("disputes")
