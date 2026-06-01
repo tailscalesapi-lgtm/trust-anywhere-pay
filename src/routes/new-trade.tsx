@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Layout, Panel, YellowCard } from "@/components/Layout";
-import { createTrade } from "@/lib/trades.functions";
+import { createTrade, listAssets } from "@/lib/trades.functions";
 
 export const Route = createFileRoute("/new-trade")({
   head: () => ({
@@ -17,7 +17,10 @@ export const Route = createFileRoute("/new-trade")({
 function NewTrade() {
   const navigate = useNavigate();
   const create = useServerFn(createTrade);
+  const fetchAssets = useServerFn(listAssets);
+  const [assets, setAssets] = useState<Array<{ symbol: string; name: string }>>([]);
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [coin, setCoin] = useState("BTC");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [agreement, setAgreement] = useState("");
@@ -25,6 +28,13 @@ function NewTrade() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ id: string; password: string } | null>(null);
+
+  useEffect(() => {
+    fetchAssets().then((a) => {
+      setAssets(a);
+      if (a.length && !a.find((x) => x.symbol === coin)) setCoin(a[0].symbol);
+    }).catch(() => {});
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +44,7 @@ function NewTrade() {
       const r = await create({
         data: {
           role,
-          payment_method: "BTC",
+          payment_method: coin,
           name: name.trim(),
           amount: Number(amount),
           agreement: agreement.trim(),
