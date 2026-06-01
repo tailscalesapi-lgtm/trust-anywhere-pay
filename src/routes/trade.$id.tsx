@@ -186,46 +186,73 @@ function TradeView({
 
         {trade.status === "pending_deposit" && (
           <YellowCard className="space-y-2">
-            <p className="font-semibold">Send exactly {trade.amount} BTC to:</p>
-            <code className="block bg-black/10 rounded px-3 py-2 break-all">{trade.deposit_address}</code>
-            <p className="text-sm">
-              The Bitcoin network is monitored automatically. As soon as your transaction is
-              confirmed (1+ confirmation), the trade unlocks and the seller is notified.
+            <p className="font-semibold">
+              Send exactly {trade.amount} {trade.payment_method} to:
             </p>
-            {trade._onchain && (
-              <div className="text-sm bg-black/10 rounded p-2 space-y-1">
-                <p>
-                  Confirmed received: <strong>{(trade._onchain.confirmed_sats / 1e8).toFixed(8)} BTC</strong>
+            <code className="block bg-black/10 rounded px-3 py-2 break-all">
+              {trade.deposit_address}
+            </code>
+            {trade.payment_method === "BTC" ? (
+              <>
+                <p className="text-sm">
+                  The Bitcoin network is monitored automatically. As soon as your transaction
+                  confirms (1+ confirmation), the trade unlocks.
                 </p>
-                {trade._onchain.received_sats > trade._onchain.confirmed_sats && (
-                  <p>
-                    In mempool (unconfirmed):{" "}
-                    <strong>
-                      {((trade._onchain.received_sats - trade._onchain.confirmed_sats) / 1e8).toFixed(8)} BTC
-                    </strong>
-                  </p>
+                {trade._onchain && (
+                  <div className="text-sm bg-black/10 rounded p-2 space-y-1">
+                    <p>
+                      Confirmed received:{" "}
+                      <strong>{(trade._onchain.confirmed_sats / 1e8).toFixed(8)} BTC</strong>
+                    </p>
+                    {trade._onchain.received_sats > trade._onchain.confirmed_sats && (
+                      <p>
+                        In mempool (unconfirmed):{" "}
+                        <strong>
+                          {((trade._onchain.received_sats - trade._onchain.confirmed_sats) / 1e8).toFixed(8)} BTC
+                        </strong>
+                      </p>
+                    )}
+                    <p>
+                      Required:{" "}
+                      <strong>{(trade._onchain.required_sats / 1e8).toFixed(8)} BTC</strong>
+                    </p>
+                  </div>
                 )}
-                <p>
-                  Required: <strong>{(trade._onchain.required_sats / 1e8).toFixed(8)} BTC</strong>
-                </p>
-              </div>
+              </>
+            ) : (
+              <p className="text-sm">
+                After sending {trade.payment_method}, press “I've sent it” so the seller is notified.
+                Our team will verify the deposit before funds are released.
+              </p>
             )}
-            <div className="flex gap-2">
-              <button
-                disabled={busy}
-                onClick={() => { reload(); }}
-                className="px-4 py-2 bg-black text-white rounded"
-              >
-                Check now
-              </button>
-              <a
-                href={`https://mempool.space/address/${trade.deposit_address}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-4 py-2 bg-cyan-brand text-black rounded font-semibold"
-              >
-                View on explorer
-              </a>
+            <div className="flex gap-2 flex-wrap">
+              {trade.payment_method === "BTC" ? (
+                <>
+                  <button
+                    disabled={busy}
+                    onClick={() => { reload(); }}
+                    className="px-4 py-2 bg-black text-white rounded"
+                  >
+                    Check now
+                  </button>
+                  <a
+                    href={`https://mempool.space/address/${trade.deposit_address}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 bg-cyan-brand text-black rounded font-semibold"
+                  >
+                    View on explorer
+                  </a>
+                </>
+              ) : (
+                <button
+                  disabled={busy}
+                  onClick={() => run(() => fund({ data: { id: trade.id, password } }))}
+                  className="px-4 py-2 bg-cyan-brand text-black rounded font-semibold"
+                >
+                  I've sent it
+                </button>
+              )}
               <button
                 disabled={busy}
                 onClick={() => run(() => cancel({ data: { id: trade.id, password } }))}
@@ -236,6 +263,7 @@ function TradeView({
             </div>
           </YellowCard>
         )}
+
 
         {trade.status === "funded" && (
           <div className="space-y-3">
