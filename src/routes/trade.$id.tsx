@@ -7,7 +7,6 @@ import {
   addDisputeMessage,
   cancelTrade,
   getTrade,
-  markFunded,
   openDispute,
   releaseFunds,
 } from "@/lib/trades.functions";
@@ -119,7 +118,7 @@ function TradeView({
   reload: () => void;
 }) {
   const { trade, dispute, messages } = data;
-  const fund = useServerFn(markFunded);
+  // markFunded is no longer used directly — funding is detected on-chain by getTrade.
   const release = useServerFn(releaseFunds);
   const cancel = useServerFn(cancelTrade);
   const dispute_ = useServerFn(openDispute);
@@ -185,20 +184,46 @@ function TradeView({
 
         {trade.status === "pending_deposit" && (
           <YellowCard className="space-y-2">
-            <p className="font-semibold">Deposit {trade.amount} BTC to:</p>
+            <p className="font-semibold">Send exactly {trade.amount} BTC to:</p>
             <code className="block bg-black/10 rounded px-3 py-2 break-all">{trade.deposit_address}</code>
             <p className="text-sm">
-              After sending the payment, click "I've deposited" — the other party will then be able
-              to find this trade.
+              The Bitcoin network is monitored automatically. As soon as your transaction is
+              confirmed (1+ confirmation), the trade unlocks and the seller is notified.
             </p>
+            {trade._onchain && (
+              <div className="text-sm bg-black/10 rounded p-2 space-y-1">
+                <p>
+                  Confirmed received: <strong>{(trade._onchain.confirmed_sats / 1e8).toFixed(8)} BTC</strong>
+                </p>
+                {trade._onchain.received_sats > trade._onchain.confirmed_sats && (
+                  <p>
+                    In mempool (unconfirmed):{" "}
+                    <strong>
+                      {((trade._onchain.received_sats - trade._onchain.confirmed_sats) / 1e8).toFixed(8)} BTC
+                    </strong>
+                  </p>
+                )}
+                <p>
+                  Required: <strong>{(trade._onchain.required_sats / 1e8).toFixed(8)} BTC</strong>
+                </p>
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 disabled={busy}
-                onClick={() => run(() => fund({ data: { id: trade.id, password } }))}
+                onClick={() => { reload(); }}
                 className="px-4 py-2 bg-black text-white rounded"
               >
-                I've deposited
+                Check now
               </button>
+              <a
+                href={`https://mempool.space/address/${trade.deposit_address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-cyan-brand text-black rounded font-semibold"
+              >
+                View on explorer
+              </a>
               <button
                 disabled={busy}
                 onClick={() => run(() => cancel({ data: { id: trade.id, password } }))}
