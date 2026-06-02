@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      allowedHosts: [".onion", "uijmdtpq2nv6nx4frs55qf3xprwkngwo4duvnghi6uojs4cwlwx2tqd.onion"],
+    },
+  },
 });
