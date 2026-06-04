@@ -44,22 +44,47 @@ npm run build   # produces .output/
 
 ```bash
 cp .env.production.example .env
-nano .env       # fill in real values
+nano .env       # fill in ALL real values (see below)
 chmod 600 .env
 ```
 
-Required variables (see `.env.production.example`):
+**Required variables (see `.env.production.example` for the full template):**
 
 | Var | Where used |
 |---|---|
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` | client bundle (must be set at **build** time) |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | server fns (auth middleware) |
 | `SUPABASE_SERVICE_ROLE_KEY` | server admin operations (RLS bypass) |
-| `ADMIN_PASSWORD` | admin login |
-| `ADMIN_SESSION_SECRET` | admin cookie encryption — must be ≥32 chars. `openssl rand -hex 32` |
+| `ADMIN_PASSWORD` | **admin panel login** — pick a strong password |
+| `ADMIN_SESSION_SECRET` | admin cookie encryption — **must be ≥32 chars**. Generate with: `openssl rand -hex 32` |
 | `HOST`, `PORT`, `NODE_ENV` | Node server bind |
 
-> If you change any `VITE_*` value, you must `npm run build` again — they are inlined at build time.
+> ⚠️ **If you change any `VITE_*` value, you must `npm run build` again** — they are inlined at build time.
+
+### Quick `.env` snippet to paste
+
+Replace the placeholder values with real ones:
+
+```bash
+# ---- Public (safe in client bundle) ----
+VITE_SUPABASE_URL=https://kfhzqknjxgiuaeewfucy.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_PROJECT_ID=kfhzqknjxgiuaeewfucy
+
+# ---- Server-only (NEVER expose) ----
+SUPABASE_URL=https://kfhzqknjxgiuaeewfucy.supabase.co
+SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<paste-from-supabase-dashboard>
+
+# Admin panel — set your own strong password
+ADMIN_PASSWORD=ChangeMeToAStrongPassword123!
+ADMIN_SESSION_SECRET=<run: openssl rand -hex 32>
+
+# Node server bind
+NODE_ENV=production
+HOST=127.0.0.1
+PORT=3000
+```
 
 ## 4. Start with PM2
 
