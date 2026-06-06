@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "ftescrow",
-      script: "server.js",
+      script: "start-server.js",
       exec_mode: "fork",
       instances: 1,
       env: {
